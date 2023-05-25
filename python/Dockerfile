@@ -1,5 +1,4 @@
 FROM python:slim
-ENV API_KEY "demo"
 
 ADD main.py .
 
