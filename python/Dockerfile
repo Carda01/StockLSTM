@@ -1,9 +1,11 @@
-FROM python:slim
+FROM python:3.11.3-slim
+LABEL maintainer="Alfio Cardillo"
 
-ADD main.py .
+ADD parser.py main.py
+ADD jsons/ ./jsons/
 
 #Packages
-RUN pip install requests
+RUN pip install requests 
 
 CMD ["python", "./main.py"]
 
