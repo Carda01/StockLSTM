@@ -1,0 +1,6 @@
+python/jsons/*
+api.env
+kafka/
+spark/
+docker-compose.yml
+
