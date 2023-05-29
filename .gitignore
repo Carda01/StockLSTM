@@ -3,4 +3,6 @@ api.env
 kafka/
 spark/
 docker-compose.yml
+csvs/
+python/csvtry.py
 
