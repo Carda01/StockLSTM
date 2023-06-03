@@ -8,11 +8,13 @@ import requests, os, json
 
 SYMBOLS = ["MSFT", "AAPL", "GOOGL"]
 
+
+
 for SYMBOL in SYMBOLS:
     parameters_value = {
             "function": "TIME_SERIES_INTRADAY",
             "symbol": SYMBOL,
-            "apikey": os.environ.get("API_KEY"),
+            "apikey": "Z7YNCEIQHZPQACP3",
             "interval": "5min"
             }
 

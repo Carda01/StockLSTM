@@ -2,7 +2,8 @@ python/jsons/*
 api.env
 kafka/
 spark/
-docker-compose.yml
 csvs/
 python/csvtry.py
-
+*.json
+*.csv
+bnkafka/*
