@@ -7,7 +7,7 @@ if SECONDS is None:
 else:
     SECONDS = int(SECONDS)
 
-url = "http://10.1.100.10:9880"
+url = "http://10.0.100.10:9880"
 
 def stock_time_parser(date : str) -> int:
     return int(date[11:-3].replace(":", ""))

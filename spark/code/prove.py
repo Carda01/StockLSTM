@@ -13,6 +13,42 @@ from pyspark.sql.dataframe import DataFrame
 from pyspark.ml.regression import LinearRegressionModel
 from pyspark.ml.feature import VectorAssembler
 
+# Elastic Search
+from elasticsearch import Elasticsearch
+elastic_host="http://elasticsearch:9200"
+elastic_index="taptweet"
+
+es_mapping = {
+    "mappings": {
+        "properties": 
+            {
+                "created_at": {"type": "date","format": "yyyy-MM-ddTHH:mm:ss.SSSZ"},
+                "content": {"type": "text","fielddata": True}
+            }
+    }
+}
+
+es = Elasticsearch(hosts=elastic_host)
+
+# make an API call to the Elasticsearch cluster
+# and have it return a response:
+response = es.indices.create(
+    index=elastic_index,
+    body=es_mapping,
+    ignore=400 # ignore 400 already exists code
+)
+
+if 'acknowledged' in response:
+    if response['acknowledged'] == True:
+        print ("INDEX MAPPING SUCCESS FOR INDEX:", response['index'])
+
+# Define Training Set Structure
+tweetKafka = tp.StructType([
+    tp.StructField(name= '@timestamp', dataType= tp.LongType(),  nullable= True),
+    tp.StructField(name= 'close', dataType= tp.DoubleType(),  nullable= True),
+    tp.StructField(name= 'symbol', dataType= tp.StringType(),  nullable= True)
+])
+
 def elaborate(batch_df: DataFrame, batch_id: int):
   batch_df.show(truncate=False)
 
@@ -63,13 +99,20 @@ def process_streaming_data(streaming_df):
 
     return predictions
 
-processed_data = df.transform(process_streaming_data)
+processed_data = df.transform(process_streaming_data) \
+        .select("@timestamp", "close", "symbol", "prediction")
 # df.writeStream \
 #   .foreachBatch(elaborate) \
 #   .start() \
 #   .awaitTermination()
 
+# processed_data.writeStream \
+#   .format("console") \
+#   .start() \
+#   .awaitTermination()
+
 processed_data.writeStream \
-  .format("console") \
-  .start() \
-  .awaitTermination()
+        .option("checkpointLocation", "/save/location") \
+        .format("es") \
+        .start(elastic_index) \
+        .awaitTermination()
