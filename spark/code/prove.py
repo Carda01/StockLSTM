@@ -10,6 +10,8 @@ from pyspark.streaming import StreamingContext
 from pyspark.sql.functions import from_json, col
 import pyspark.sql.types as tp
 from pyspark.sql.dataframe import DataFrame
+from pyspark.ml.regression import LinearRegressionModel
+from pyspark.ml.feature import VectorAssembler
 
 def elaborate(batch_df: DataFrame, batch_id: int):
   batch_df.show(truncate=False)
@@ -51,13 +53,23 @@ df = df.withColumn("open", df.open.cast("double")) \
        .withColumn("volume", df.volume.cast("int")) \
        .withColumn("@timestamp", col("@timestamp").cast(tp.LongType()))
 
+model = LinearRegressionModel.load("/opt/tap/mlmodels/model")
 
+def process_streaming_data(streaming_df):
+    assembler = VectorAssembler(inputCols=["open", "high", "low", "close"], outputCol="features")
+    assembled_data = assembler.transform(streaming_df)
+
+    predictions = model.transform(assembled_data)
+
+    return predictions
+
+processed_data = df.transform(process_streaming_data)
 # df.writeStream \
 #   .foreachBatch(elaborate) \
 #   .start() \
 #   .awaitTermination()
 
-df.writeStream \
+processed_data.writeStream \
   .format("console") \
   .start() \
   .awaitTermination()
