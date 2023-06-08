@@ -103,7 +103,7 @@ services:
     image: stock:spark
     depends_on:
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       kafkaTopic:
         condition: service_completed_successfully
     networks:

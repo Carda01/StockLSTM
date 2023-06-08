@@ -8,12 +8,13 @@ from pyspark.conf import SparkConf
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.streaming import StreamingContext
-from pyspark.sql.functions import from_json, col
+from pyspark.sql.functions import from_json, col, from_unixtime, current_timestamp, to_utc_timestamp, current_date, lit, to_timestamp, date_format
 import pyspark.sql.types as tp
 from pyspark.sql.dataframe import DataFrame
 from pyspark.ml.regression import LinearRegressionModel
 from pyspark.ml.feature import VectorAssembler
-
+from pyspark.sql import Row
+from datetime import datetime
 # Elastic Search
 from elasticsearch import Elasticsearch
 
@@ -22,12 +23,18 @@ elastic_index="stocks"
 kafkaServer="broker1:9092"
 topic = "stock_prices"
 
+
+#"utc_timestamp": {"type": "date","format": "yyyy-MM-dd HH:mm:ss"},
+#"now_timestamp": {"type": "date","format": "yyyy-MM-dd HH:mm:ss"},
+#"now_timestamppp": {"type": "date"},
 es_mapping = {
     "mappings": {
         "properties": 
             {
-                "created_at": {"type": "date","format": "yyyy-MM-ddTHH:mm:ss.SSSZ"},
-                "content": {"type": "text","fielddata": True}
+                "@timestamp": {"type": "date", "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"},
+                "close": {"type": "double","fielddata": True},
+                "symbol": {"type": "text","fielddata": True},
+                "prediction": {"type": "double","fielddata": True}
             }
     }
 }
@@ -97,6 +104,7 @@ def process_streaming_data(streaming_df):
 
 processed_data = df.transform(process_streaming_data) \
         .select("@timestamp", "close", "symbol", "prediction")
+
 # df.writeStream \
 #   .foreachBatch(elaborate) \
 #   .start() \
@@ -107,7 +115,18 @@ processed_data = df.transform(process_streaming_data) \
 #   .start() \
 #   .awaitTermination()
 
-processed_data.writeStream \
+df = processed_data.withColumn("utc_timestamp", from_unixtime("@timestamp").cast("string"))
+
+df = df.withColumn("now_timestamp", current_date())
+df = df.withColumn("now_timestamppp", from_unixtime("@timestamp").cast("string"))
+df = df.drop("timestamp", "@timestamp", "now_timestamp")
+# df = df.withColumn("new", lit(datetime.now().isoformat()))
+# df = df.withColumnRenamed("new", "@timestamp")
+#df = df.transform(elaborate)
+df = df.withColumn("timestamp", current_timestamp())
+df = df.withColumn("@timestamp", date_format(df.timestamp,  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
+
+df.writeStream \
         .option("checkpointLocation", "/save/location") \
         .format("es") \
         .start(elastic_index) \
