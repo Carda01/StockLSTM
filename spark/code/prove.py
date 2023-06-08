@@ -4,6 +4,7 @@ from os import truncate
 import time
 import sys
 
+from pyspark.conf import SparkConf
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.streaming import StreamingContext
@@ -15,8 +16,11 @@ from pyspark.ml.feature import VectorAssembler
 
 # Elastic Search
 from elasticsearch import Elasticsearch
+
 elastic_host="http://elasticsearch:9200"
-elastic_index="taptweet"
+elastic_index="stocks"
+kafkaServer="broker1:9092"
+topic = "stock_prices"
 
 es_mapping = {
     "mappings": {
@@ -42,20 +46,6 @@ if 'acknowledged' in response:
     if response['acknowledged'] == True:
         print ("INDEX MAPPING SUCCESS FOR INDEX:", response['index'])
 
-# Define Training Set Structure
-tweetKafka = tp.StructType([
-    tp.StructField(name= '@timestamp', dataType= tp.LongType(),  nullable= True),
-    tp.StructField(name= 'close', dataType= tp.DoubleType(),  nullable= True),
-    tp.StructField(name= 'symbol', dataType= tp.StringType(),  nullable= True)
-])
-
-def elaborate(batch_df: DataFrame, batch_id: int):
-  batch_df.show(truncate=False)
-
-sc = SparkContext(appName="PythonStructuredStreamsKafka")
-spark = SparkSession(sc)
-sc.setLogLevel("WARN")
-
 stockKafka = tp.StructType([
     tp.StructField(name= '@timestamp', dataType= tp.DoubleType(), nullable= False), 
     tp.StructField(name= 'open', dataType= tp.StringType(),  nullable= False),
@@ -66,8 +56,14 @@ stockKafka = tp.StructType([
     tp.StructField(name= 'symbol', dataType= tp.StringType(),  nullable=False),
 ])
 
-kafkaServer="broker1:9092"
-topic = "stock_prices"
+
+sparkConf = SparkConf() \
+            .set("es.nodes", "elasticsearch") \
+            .set("es.port", "9200")
+
+sc = SparkContext(appName="StockRegression", conf=sparkConf)
+spark = SparkSession(sc)
+sc.setLogLevel("WARN")
 
 # Streaming Query
 
