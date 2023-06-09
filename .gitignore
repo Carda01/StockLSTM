@@ -1,9 +1,7 @@
 python/jsons/*
 api.env
 kafka/
-spark/
 csvs/
 python/csvtry.py
 *.json
 *.csv
-bnkafka/*

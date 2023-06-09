@@ -92,7 +92,7 @@ df = df.withColumn("open", df.open.cast("double")) \
        .withColumn("volume", df.volume.cast("int")) \
        .withColumn("@timestamp", col("@timestamp").cast(tp.LongType()))
 
-model = LinearRegressionModel.load("/opt/tap/mlmodels/model")
+model = LinearRegressionModel.load("/opt/spark/model")
 
 def process_streaming_data(streaming_df):
     assembler = VectorAssembler(inputCols=["open", "high", "low", "close"], outputCol="features")
