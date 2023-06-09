@@ -5,3 +5,5 @@ csvs/
 python/csvtry.py
 *.json
 *.csv
+*/.ipynb_checkpoints/*
+.ipynb_checkpoints/*
