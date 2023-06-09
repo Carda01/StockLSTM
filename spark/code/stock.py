@@ -24,6 +24,7 @@ es_mapping = {
         "properties": 
             {
                 "@timestamp": {"type": "date", "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"},
+                "original_timestamp": {"type": "long","fielddata": True},
                 "close": {"type": "double","fielddata": True},
                 "symbol": {"type": "text","fielddata": True},
                 "prediction": {"type": "double","fielddata": True}
@@ -97,9 +98,9 @@ def process_streaming_data(streaming_df):
 df = input_df.transform(process_streaming_data) \
         .select("@timestamp", "close", "symbol", "prediction")
 
-df = df.withColumnRenamed("@timestamp", "original_timestamp") \
-       .withColumn("timestamp", current_timestamp()) \
-       .withColumn("@timestamp", date_format(df.timestamp,  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
+df = df.withColumnRenamed("@timestamp", "original_timestamp")
+df = df.withColumn("timestamp", current_timestamp()) 
+df = df.withColumn("@timestamp", date_format(df.timestamp,  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
 
 df.writeStream \
         .option("checkpointLocation", "/save/location") \
