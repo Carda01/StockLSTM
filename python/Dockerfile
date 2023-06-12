@@ -5,6 +5,8 @@ LABEL maintainer="Alfio Cardillo"
 #Packages
 RUN pip install requests 
 
+
+ADD utilities.py utilities.py
 ADD main.py main.py
 
 CMD ["python", "./main.py"]
