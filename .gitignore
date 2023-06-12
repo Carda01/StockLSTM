@@ -5,4 +5,3 @@ api.env
 *.csv
 */.ipynb_checkpoints/*
 .ipynb_checkpoints/*
-doc/images/*
