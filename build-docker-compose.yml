@@ -1,0 +1,189 @@
+version: "3.7"
+  
+services:
+  
+  ########################################
+  #            kafka-broker 🫡           #
+  ########################################
+  
+  broker1:
+    image: 'bitnami/kafka:3.4.0'
+    container_name: broker1
+    networks:
+      stock: 
+        ipv4_address: 10.0.100.23
+    env_file:
+      - kafka.env
+    environment:
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@broker1:9093'
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://broker1:9092
+
+
+  ########################################
+  #             kafka topic 💹           #
+  ########################################
+  
+  kafkaTopic:
+    image: confluentinc/cp-kafka:6.1.1
+    container_name: kafkaTopic
+    depends_on:
+      - broker1
+    entrypoint: [ '/bin/sh', '-c' ]
+    networks:
+      - stock
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics --bootstrap-server broker1:9092 --list
+      echo -e 'Creating kafka topics'
+      kafka-topics --bootstrap-server broker1:9092 --create --if-not-exists --topic stock_prices --replication-factor 1 --partitions 2
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server broker1:9092 --list
+      "
+  
+  ########################################
+  #              kafka UI  🧿            #
+  ########################################
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: 'provectuslabs/kafka-ui:latest'
+    depends_on:
+      - broker1
+      - kafkaTopic
+    ports:
+      - 8080:8080
+    networks:
+      - stock
+    environment:
+      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: 'broker1:9092'
+      KAFKA_CLUSTERS_0_NAME: local-kafka-cluster
+
+  ########################################
+  #             fluentbit 🐦             #
+  ########################################
+  
+  fluentbit:
+    container_name: fluentbit
+    build:
+      context: ./fluentbit
+      dockerfile: ./Dockerfile
+    networks: 
+      stock:
+        ipv4_address: 10.0.100.10
+    depends_on:
+      kafkaTopic:
+        condition: service_completed_successfully
+
+  ########################################
+  #            python-script 🐍          #
+  ########################################
+
+  timelinescript:
+    container_name: timeline
+    build:
+      context: ./python
+      dockerfile: ./Dockerfile
+    networks:
+      - stock
+    depends_on:
+      - spark
+      - fluentbit
+    environment:
+      SECONDS: 2
+        # env_file:
+        #   - api.env
+
+  ########################################
+  #               spark 🐎               #
+  ########################################
+
+  spark: 
+    container_name: spark
+    build:
+      context: ./spark
+      dockerfile: ./Dockerfile
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafkaTopic:
+        condition: service_completed_successfully
+    networks:
+      stock:
+        ipv4_address: 10.0.100.11
+    volumes:
+      - sparklibs:/root/.ivy2
+
+
+  ########################################
+  #            elastic-search 🔥         #
+  ########################################
+
+  elasticsearch:
+    container_name: elasticsearch
+    build:
+      context: ./elasticsearch
+      dockerfile: ./Dockerfile
+    networks:
+      stock:
+        ipv4_address: 10.0.100.51
+    environment:
+      cluster.routing.allocation.disk.threshold_enabled: false
+      cluster.name: elastic_stock
+      discovery.type: single-node
+      xpack.security.enabled: false
+      bootstrap.memory_lock: true
+      ES_JAVA_OPTS: -Xms4g -Xmx4g
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent localhost:9200/cluster/_health"]
+      interval: 15s
+      timeout: 15s
+      retries: 6
+
+  ########################################
+  #               kibana 🦄              #
+  ########################################
+
+  kibana:
+    build:
+      context: ./kibana
+      dockerfile: ./Dockerfile
+    container_name: kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - stock
+    ports:
+      - 5601:5601
+    volumes:
+      - kibana-data:/usr/share/kibana/data/
+
+
+########################################
+#              networks 🖧              #
+########################################
+
+networks:
+  stock:
+    name: stock
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.100.1/24
+
+
+########################################
+#              volumes 💾              #
+########################################
+
+volumes: 
+  sparklibs:
+    external: false
+  kibana-data:
