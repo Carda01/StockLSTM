@@ -85,18 +85,50 @@ input_df = input_df.withColumn("open", input_df.open.cast("double")) \
        .withColumn("volume", input_df.volume.cast("int")) \
        .withColumn("@timestamp", col("@timestamp").cast(tp.TimestampType()))
 
-model = LinearRegressionModel.load("/opt/spark/model")
+apple = input_df.filter(input_df.symbol == "AAPL")
+google = input_df.filter(input_df.symbol == "GOOGL")
+microsoft = input_df.filter(input_df.symbol == "MSFT")
 
-def process_streaming_data(streaming_df):
+
+apple_model = LinearRegressionModel.load("/opt/spark/AAPLmodel")
+google_model = LinearRegressionModel.load("/opt/spark/GOOGLmodel")
+microsoft_model = LinearRegressionModel.load("/opt/spark/MSFTmodel")
+
+def google_process_streaming_data(streaming_df):
     assembler = VectorAssembler(inputCols=["open", "high", "low", "close"], outputCol="features")
     assembled_data = assembler.transform(streaming_df)
 
-    predictions = model.transform(assembled_data)
+    predictions = google_model.transform(assembled_data)
 
     return predictions
 
-df = input_df.transform(process_streaming_data) \
-                .select("@timestamp", "close", "symbol", "prediction")
+def microsoft_process_streaming_data(streaming_df):
+    assembler = VectorAssembler(inputCols=["open", "high", "low", "close"], outputCol="features")
+    assembled_data = assembler.transform(streaming_df)
+
+    predictions = microsoft_model.transform(assembled_data)
+
+    return predictions
+
+def apple_process_streaming_data(streaming_df):
+    assembler = VectorAssembler(inputCols=["open", "high", "low", "close"], outputCol="features")
+    assembled_data = assembler.transform(streaming_df)
+
+    predictions = apple_model.transform(assembled_data)
+
+    return predictions
+
+apple = apple.transform(apple_process_streaming_data) \
+             .select("@timestamp", "close", "symbol", "prediction")
+
+microsoft = microsoft.transform(microsoft_process_streaming_data) \
+             .select("@timestamp", "close", "symbol", "prediction")
+
+google = google.transform(google_process_streaming_data) \
+             .select("@timestamp", "close", "symbol", "prediction")
+
+df = apple.union(google)
+df = df.union(microsoft)
 
 df = df.withColumnRenamed("@timestamp", "original_timestamp")
 
@@ -119,14 +151,7 @@ df = df.withColumn("original_timestamp", date_format(df.original_timestamp,  "yy
 df = df.withColumn("@timestamp", date_format(df.timestamp,  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
 df = df.drop("timestamp")
 
-apple = df.filter(df.symbol == "AAPL")
-google = df.filter(df.symbol == "GOOGL")
-microsoft = df.filter(df.symbol == "MSFT")
-
-da = apple.union(google)
-da = da.union(microsoft)
-
-da.writeStream \
+df.writeStream \
   .option("checkpointLocation", "/save/location") \
   .format("es") \
   .start(elastic_index) \
