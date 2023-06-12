@@ -90,7 +90,7 @@ services:
       - spark
       - fluentbit
     environment:
-      SECONDS: 10
+      SECONDS: 1
         # env_file:
         #   - api.env
 

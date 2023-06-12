@@ -1,9 +1,8 @@
 python/jsons/*
+python/parser.py
 api.env
-kafka/
-csvs/
-python/csvtry.py
 *.json
 *.csv
 */.ipynb_checkpoints/*
 .ipynb_checkpoints/*
+doc/images/*
