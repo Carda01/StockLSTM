@@ -27,7 +27,7 @@ services:
   ########################################
   
   kafkaTopic:
-    image: confluentinc/cp-kafka:6.1.1
+    image: confluentinc/cp-kafka:7.4.0
     container_name: kafkaTopic
     depends_on:
       - broker1
@@ -90,7 +90,7 @@ services:
       - spark
       - fluentbit
     environment:
-      SECONDS: 1
+      SECONDS: 0.4
         # env_file:
         #   - api.env
 
@@ -137,9 +137,9 @@ services:
       - 9200:9200
     healthcheck:
       test: ["CMD-SHELL", "curl --silent localhost:9200/cluster/_health"]
-      interval: 15s
-      timeout: 15s
-      retries: 6
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
   ########################################
   #               kibana 🦄              #

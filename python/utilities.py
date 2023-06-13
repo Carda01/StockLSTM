@@ -69,7 +69,7 @@ def sendData(timeline):
     if SECONDS is None:
         SECONDS = 1
     else:
-        SECONDS = int(SECONDS)
+        SECONDS = float(SECONDS)
 
     url = "http://10.0.100.10:9880"
 
