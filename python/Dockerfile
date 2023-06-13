@@ -5,9 +5,8 @@ LABEL maintainer="Alfio Cardillo"
 #Packages
 RUN pip install requests 
 
-ADD jsons/ ./jsons/
 ADD utilities.py utilities.py
-ADD parser.py main.py
+ADD main.py main.py
 
 CMD ["python", "./main.py"]
 
