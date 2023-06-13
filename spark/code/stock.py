@@ -11,6 +11,9 @@ def main():
     df = df.withColumnRenamed("@timestamp", "original_timestamp")
     df = add_previous_prediction(df)
     df = add_format_timestamps(df)
+    locations = read_location(spark)
+    df = add_geoinfo(df, locations)
+    df = df.withColumn("difference", col("prediction") - col("close"))
     write_to_elastic(df)
 # Models
 

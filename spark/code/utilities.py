@@ -32,7 +32,9 @@ ES_MAPPING = {
                 "close": {"type": "double"},
                 "symbol": {"type": "text"},
                 "prediction": {"type": "double"},
-                "@timestamp": {"type": "date", "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"}
+                "difference": {"type": "double"},
+                "@timestamp": {"type": "date", "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"},
+                "location": {"type": "geo_point"}
             }
     }
 }
@@ -143,6 +145,24 @@ def add_previous_prediction(input_df):
            .select(col("input_df.original_timestamp"), col("input_df.close"), col("input_df.symbol"), col("predictions.prediction"))
 
     return input_df
+
+def read_location(spark):
+    schema = tp.StructType([
+        tp.StructField(name="symbol", dataType=tp.StringType(), nullable=True),
+        tp.StructField(name="location", dataType=tp.StringType(), nullable=True),
+        ])
+
+    location = spark.read.csv('../locations.csv',
+                        schema = schema,
+                        header = True,
+                        sep = ',')
+    return location
+
+
+def add_geoinfo(df, location):
+    return df.alias("df")\
+            .join(location.alias("location"), df.symbol == location.symbol) \
+            .select(col("df.symbol"), col("df.original_timestamp"), col("location.location"), col("df.close"), col("df.prediction"), col("df.@timestamp"))
 
 
 
